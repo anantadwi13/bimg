@@ -350,7 +350,9 @@ func vipsWatermark(image *C.VipsImage, w Watermark) (*C.VipsImage, error) {
 	background := [3]C.double{C.double(w.Background.R), C.double(w.Background.G), C.double(w.Background.B)}
 
 	textOpts := vipsWatermarkTextOptions{text, font}
-	opts := vipsWatermarkOptions{C.int(w.Width), C.int(w.DPI), C.int(w.Margin), C.int(noReplicate), C.float(w.Opacity), background}
+	opts := vipsWatermarkOptions{
+		C.int(w.Width), C.int(w.DPI), C.int(w.Margin), C.int(noReplicate), C.float(w.Opacity), background,
+	}
 
 	defer C.free(unsafe.Pointer(text))
 	defer C.free(unsafe.Pointer(font))
@@ -662,7 +664,9 @@ func vipsReduce(input *C.VipsImage, xshrink float64, yshrink float64) (*C.VipsIm
 	return image, nil
 }
 
-func vipsEmbed(input *C.VipsImage, left, top, width, height int, extend Extend, background Color) (*C.VipsImage, error) {
+func vipsEmbed(input *C.VipsImage, left, top, width, height int, extend Extend, background Color) (
+	*C.VipsImage, error,
+) {
 	var image *C.VipsImage
 
 	// Max extend value, see: https://libvips.github.io/libvips/API/current/libvips-conversion.html#VipsExtend
@@ -777,7 +781,12 @@ func catchVipsError() error {
 	s := C.GoString(C.vips_error_buffer())
 	C.vips_error_clear()
 	C.vips_thread_shutdown()
-	return errors.New(s)
+	caller := ""
+	_, file, line, ok := runtime.Caller(1)
+	if ok {
+		caller = fmt.Sprintf(". called by %v#%v", file, line)
+	}
+	return errors.New(s + caller)
 }
 
 func boolToInt(b bool) int {
